@@ -107,7 +107,10 @@ const loginTutor = asyncHandler(async (req, res) => {
     ...cookieOpts,
     maxAge: 230 * 24 * 60 * 60 * 1000,
   });
-
+  res.cookie("userType", "tutor", {
+    ...cookieOpts,
+    maxAge: 230 * 24 * 60 * 60 * 1000,
+  });
   const safeTutor = await Tutor.findById(tutor._id).select("-password");
   return res
     .status(200)
@@ -132,6 +135,7 @@ const logoutTutor = asyncHandler(async (req, res) => {
   return res
     .clearCookie("accessToken", cookieOpts)
     .clearCookie("refreshToken", cookieOpts)
+    .clearCookie("userType", cookieOpts)
     .status(200)
     .json(new ApiResponse(200, {}, "Logout successful"));
 });
@@ -202,6 +206,7 @@ const createCourse = asyncHandler(async (req, res) => {
     coursePrice,
     courseDescription,
     studentsEnrolled = [],
+    tags = [],
   } = req.body;
   console.log("A", tutor);
   const course = await new Course({
@@ -210,6 +215,7 @@ const createCourse = asyncHandler(async (req, res) => {
     coursePrice,
     courseDescription,
     studentsEnrolled,
+    tags,
   });
 
   await course.save();
@@ -217,6 +223,15 @@ const createCourse = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, course, "New course created"));
 });
+
+const checkVerification = asyncHandler(async (req, res) => {
+  const { tutorID } = req.params;
+  const tutor = await Tutor.findOne({ _id: tutorID });
+  if (!tutor) throw new ApiError(404, "Not found tutor");
+  if (tutor.isPending == true) throw new ApiError(405, "Tutor is not verified");
+  return res.status(200).json(new ApiResponse(200, {}, "Tutor is verified"));
+});
+
 export {
   registerTutor,
   loginTutor,
@@ -226,4 +241,5 @@ export {
   checkRefreshToken,
   getTutor,
   createCourse,
+  checkVerification,
 };

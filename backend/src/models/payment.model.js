@@ -3,7 +3,15 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
 const paymentSchema = new Schema({
-  order_ID: {
+  razorpay_order_id: {
+    type: String,
+    required: true,
+  },
+  razorpay_payment_id: {
+    type: String,
+    required: true,
+  },
+  razorpay_signature: {
     type: String,
     required: true,
   },

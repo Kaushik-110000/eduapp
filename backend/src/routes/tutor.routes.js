@@ -8,6 +8,7 @@ import {
   checkRefreshToken,
   getTutor,
   createCourse,
+  checkVerification,
 } from "../controllers/tutor.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyTutor } from "../middlewares/auth.middleware.js";
@@ -26,5 +27,6 @@ router.get("/current-tutor", verifyTutor, getCurrentTutor);
 router.get("/check-refresh", checkRefreshToken);
 router.get("/:tutorID", getTutor);
 router.post("/createCourse", verifyTutor, createCourse);
+router.post("/checkVerification", checkVerification);
 
 export default router;
