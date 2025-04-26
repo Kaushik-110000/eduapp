@@ -84,6 +84,7 @@ const registerTutor = asyncHandler(async (req, res) => {
 
 // Login a tutor
 const loginTutor = asyncHandler(async (req, res) => {
+  // console.log(req)
   const { tutorID, email, password } = req.body;
   if ((!tutorID && !email) || !password) {
     throw new ApiError(400, "tutorID or email and password are required");
@@ -143,6 +144,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   try {
     const decoded = jwt.verify(incoming, process.env.REFRESH_TOKEN_SECRET);
     const tutor = await Tutor.findById(decoded._id);
+
     if (!tutor || incoming !== tutor.refreshToken) {
       throw new ApiError(401, "Invalid or expired refresh token");
     }
@@ -183,9 +185,9 @@ const checkRefreshToken = asyncHandler((req, res) => {
 const getTutor = asyncHandler(async (req, res) => {
   const { tutorID, tutorName } = req.params;
   const filter = tutorID
-    ? { tutorID: tutorID.trim() }
+    ? { _id: tutorID.trim() }
     : { tutorName: tutorName?.trim() };
-  const tutor = await Tutor.findOne(filter);
+  const tutor = await Tutor.findOne(filter).select("-password");
   if (!tutor) throw new ApiError(404, "Tutor not found");
 
   return res.status(200).json(new ApiResponse(200, tutor, "Tutor found"));

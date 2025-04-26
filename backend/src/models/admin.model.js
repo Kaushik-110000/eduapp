@@ -56,7 +56,7 @@ adminSchema.methods.generateAccessToken = function () {
     {
       _id: this._id,
       email: this.email,
-      tutorName: this.tutorName, // ✅ Corrected - no fullName or userName in schema
+      adminName: this.adminName, // ✅ Corrected - no fullName or userName in schema
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
