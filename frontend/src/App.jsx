@@ -8,7 +8,7 @@ import Register from "./page/auth/Register";
 import Login from "./page/auth/Login";
 import AuthLayout from "./page/auth/AuthLayout";
 import StudentDashboard from "./page/student/Dashboard";
- import TutorDashboard from './page/tutor/Dashboard';
+import TutorDashboard from './page/tutor/Dashboard';
 import AdminDashboard from './page/admin/Dashboard';
 //import PrivateRoute from './components/common/PrivateRoute';
 
