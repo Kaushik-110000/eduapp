@@ -8,7 +8,7 @@ import {
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import fs from "fs";
-
+import { Course } from "../models/course.model.js";
 // Generate access and refresh tokens for a tutor
 const generateTokens = async (tutorId) => {
   try {
@@ -193,6 +193,30 @@ const getTutor = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, tutor, "Tutor found"));
 });
 
+const createCourse = asyncHandler(async (req, res) => {
+  const { tutor } = req;
+  if (!tutor) throw new ApiError(404, "Tutor not found");
+  const {
+    courseName,
+    tutors = [],
+    coursePrice,
+    courseDescription,
+    studentsEnrolled = [],
+  } = req.body;
+  console.log("A", tutor);
+  const course = await new Course({
+    courseName,
+    tutors,
+    coursePrice,
+    courseDescription,
+    studentsEnrolled,
+  });
+
+  await course.save();
+  return res
+    .status(200)
+    .json(new ApiResponse(200, course, "New course created"));
+});
 export {
   registerTutor,
   loginTutor,
@@ -201,4 +225,5 @@ export {
   getCurrentTutor,
   checkRefreshToken,
   getTutor,
+  createCourse,
 };

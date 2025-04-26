@@ -8,7 +8,8 @@ import {
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import fs from "fs";
-
+import Razorpay from "razorpay";
+import { Course } from "../models/course.model.js";
 // Generate access and refresh tokens for a student
 const generateTokens = async (studentId) => {
   try {
@@ -201,6 +202,31 @@ const getStudent = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, student, "Student found"));
 });
 
+const enrollCourse = {
+  
+};
+
+const generatePaymentOrder = asyncHandler(async (req, res) => {
+  const { courseId } = req.body;
+  const { student } = req;
+  const instance = new Razorpay({
+    key_id: process.env.RAZORPAY_API_KEY,
+    key_secret: process.env.RAZORPAY_API_SECRET,
+  });
+
+  const course = await Course.findOne({ _id: courseId.trim() });
+  if (!course) throw new ApiError(404, "Course not found");
+  const amount = course?.coursePrice;
+  const options = {
+    amount: amount * 100,
+    currency: "INR",
+    receipt: "receipt_order_" + Math.floor(Math.random() * 1000000),
+  };
+  const order = await instance.orders.create(options);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, order, "Order successfully generated"));
+});
 export {
   registerStudent,
   loginStudent,
@@ -209,4 +235,5 @@ export {
   getCurrentStudent,
   checkRefreshToken,
   getStudent,
+  generatePaymentOrder,
 };
