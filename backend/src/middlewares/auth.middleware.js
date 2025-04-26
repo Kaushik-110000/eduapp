@@ -65,7 +65,7 @@ export const verifyTutor = asyncHandler(async (req, _, next) => {
 });
 
 export const verifyAdmin = asyncHandler(async (req, _, next) => {
-  // console.log("Entering in verify JWT function");
+  console.log("Entering in verify admin function");
   try {
     const token =
       req.cookies?.accessToken ||
@@ -86,7 +86,7 @@ export const verifyAdmin = asyncHandler(async (req, _, next) => {
     }
 
     req.admin = user;
-
+    console.log("exit");
     next();
   } catch (error) {
     throw new ApiError(401, error?.message || "Invalid token");

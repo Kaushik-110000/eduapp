@@ -188,13 +188,15 @@ const verifyTutor = asyncHandler(async (req, res) => {
 });
 
 const listUnverifiedTutors = asyncHandler(async (req, res) => {
-  console.log("Hll");
-  const tutors = await Tutor.find({ isPending: true });
-  if (!tutors) throw new ApiError(404, "No tutors are pending");
+  const tutors = await Tutor.find({ isPending: true }).select("-password");
+  if (!tutors || tutors.length === 0) {
+    throw new ApiError(404, "No tutors are pending");
+  }
   return res
     .status(200)
     .json(new ApiResponse(200, tutors, "List of pending tutors"));
 });
+
 export {
   registerAdmin,
   loginAdmin,
