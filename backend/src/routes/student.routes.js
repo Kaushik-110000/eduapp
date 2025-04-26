@@ -7,6 +7,7 @@ import {
   getCurrentStudent,
   checkRefreshToken,
   getStudent,
+  generatePaymentOrder,
 } from "../controllers/student.controller.js";
 
 const router = Router();
@@ -30,5 +31,5 @@ router.post("/refresh-token", refreshAccessToken);
 router.get("/current-student", verifyStudent, getCurrentStudent);
 router.get("/check-refresh", checkRefreshToken);
 router.get("/:studentID", getStudent); // Assuming you get student by ID or Name
-
+router.post("/generatePaymentOrder", verifyStudent, generatePaymentOrder);
 export default router;
