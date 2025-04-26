@@ -56,7 +56,7 @@ adminSchema.methods.generateAccessToken = function () {
     {
       _id: this._id,
       email: this.email,
-      adminName: this.adminName, // ✅ Corrected - no fullName or userName in schema
+      adminName: this.adminName,
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
@@ -65,7 +65,6 @@ adminSchema.methods.generateAccessToken = function () {
   );
 };
 
-// Method to generate Refresh Token
 adminSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
     {

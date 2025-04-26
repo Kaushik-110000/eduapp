@@ -27,5 +27,5 @@ router.get("/current-admin", verifyAdmin, getCurrentAdmin);
 router.get("/check-refresh", checkRefreshToken);
 router.get("/:adminID", verifyAdmin, getAdmin);
 router.post("/verify/:tutorID", verifyAdmin, verifyTutor);
-router.get("/unverifiedTutors", verifyAdmin, listUnverifiedTutors);
+router.post("/unverifiedTutors", verifyAdmin, listUnverifiedTutors);
 export default router;
