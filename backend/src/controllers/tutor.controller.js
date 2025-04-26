@@ -107,7 +107,10 @@ const loginTutor = asyncHandler(async (req, res) => {
     ...cookieOpts,
     maxAge: 230 * 24 * 60 * 60 * 1000,
   });
-
+  res.cookie("userType", "tutor", {
+    ...cookieOpts,
+    maxAge: 230 * 24 * 60 * 60 * 1000,
+  });
   const safeTutor = await Tutor.findById(tutor._id).select("-password");
   return res
     .status(200)
@@ -132,6 +135,7 @@ const logoutTutor = asyncHandler(async (req, res) => {
   return res
     .clearCookie("accessToken", cookieOpts)
     .clearCookie("refreshToken", cookieOpts)
+    .clearCookie("userType", cookieOpts)
     .status(200)
     .json(new ApiResponse(200, {}, "Logout successful"));
 });

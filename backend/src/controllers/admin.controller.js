@@ -97,7 +97,10 @@ const loginAdmin = asyncHandler(async (req, res) => {
     ...cookieOpts,
     maxAge: 230 * 24 * 60 * 60 * 1000,
   });
-
+  res.cookie("userType", "admin", {
+    ...cookieOpts,
+    maxAge: 230 * 24 * 60 * 60 * 1000,
+  });
   const safeAdmin = await Admin.findById(admin._id).select("-password");
   return res
     .status(200)
@@ -121,6 +124,7 @@ const logoutAdmin = asyncHandler(async (req, res) => {
   return res
     .clearCookie("accessToken", cookieOpts)
     .clearCookie("refreshToken", cookieOpts)
+    .clearCookie("userType", cookieOpts)
     .status(200)
     .json(new ApiResponse(200, {}, "Logout successful"));
 });
