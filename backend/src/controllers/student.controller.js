@@ -10,6 +10,7 @@ import jwt from "jsonwebtoken";
 import fs from "fs";
 import Razorpay from "razorpay";
 import { Course } from "../models/course.model.js";
+import { Payment } from "../models/payment.model.js";
 // Generate access and refresh tokens for a student
 const generateTokens = async (studentId) => {
   try {
@@ -202,9 +203,30 @@ const getStudent = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, student, "Student found"));
 });
 
-const enrollCourse = {
-  
-};
+const enrollCourse = asyncHandler(async (req, res) => {
+  const {
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    email,
+    courseID,
+  } = await req.body;
+  const student = await Student.findOne({ email });
+  if (!student) throw new ApiError(404, "Not found the student");
+  const course = await Course.findOne({ _id: courseID });
+  if (!course) throw new ApiError(404, "Course not  found");
+  const enrollment = new Payment({
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    student_ID: student._id,
+    course_ID: courseID,
+  });
+  student.coursesSubscribed.push(courseID);
+  course.studentsEnrolled.push(student._id);
+  enrollment.save();
+  return res.status(200).json(new ApiResponse(200, {}, "Payment completed"));
+});
 
 const generatePaymentOrder = asyncHandler(async (req, res) => {
   const { courseId } = req.body;
@@ -236,4 +258,5 @@ export {
   checkRefreshToken,
   getStudent,
   generatePaymentOrder,
+  enrollCourse,
 };
