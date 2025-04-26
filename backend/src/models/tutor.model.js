@@ -22,6 +22,10 @@ const tutorSchema = new Schema(
       trim: true,
       index: true,
     },
+    isPending: {
+      type: Boolean,
+      default: true,
+    },
     avatar: {
       type: String,
       required: true,

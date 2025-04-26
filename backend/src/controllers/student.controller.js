@@ -140,11 +140,17 @@ const logoutStudent = asyncHandler(async (req, res) => {
 
 // Refresh access token
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incoming = req.cookies?.refreshToken || req.body.refreshToken;
-  if (!incoming) throw new ApiError(401, "Unauthenticated request");
+  console.log("hi");
+  const incoming = req.cookies?.refreshToken;
 
+  console.log(req.cookies);
+  console.log(incoming);
+
+  if (!incoming) throw new ApiError(401, "Unauthenticated request");
+  console.log(incoming);
   try {
     const decoded = jwt.verify(incoming, process.env.REFRESH_TOKEN_SECRET);
+    console.log(decoded);
     const student = await Student.findById(decoded._id);
     if (!student || incoming !== student.refreshToken) {
       throw new ApiError(401, "Invalid or expired refresh token");
@@ -184,11 +190,12 @@ const checkRefreshToken = asyncHandler((req, res) => {
 
 // Get student by ID or studentName
 const getStudent = asyncHandler(async (req, res) => {
+  console.log("hello");
   const { studentID, studentName } = req.params;
   const filter = studentID
-    ? { studentID: studentID.trim() }
+    ? { _id: studentID.trim() }
     : { studentName: studentName?.trim() };
-  const student = await Student.findOne(filter);
+  const student = await Student.findOne(filter).select("-password");
   if (!student) throw new ApiError(404, "Student not found");
 
   return res.status(200).json(new ApiResponse(200, student, "Student found"));

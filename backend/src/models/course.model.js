@@ -13,6 +13,11 @@ const courseSchema = new Schema({
       ref: "Tutor",
     },
   ],
+  coursePrice: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
   courseDescription: {
     type: String,
   },

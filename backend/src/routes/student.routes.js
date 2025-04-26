@@ -23,11 +23,12 @@ router.route("/register").post(
   ]),
   registerStudent
 );
+
 router.post("/login", loginStudent);
-router.post("/logout", logoutStudent);
+router.post("/logout", verifyStudent, logoutStudent);
 router.post("/refresh-token", refreshAccessToken);
 router.get("/current-student", verifyStudent, getCurrentStudent);
-router.get("/check-refresh-token", checkRefreshToken);
+router.get("/check-refresh", checkRefreshToken);
 router.get("/:studentID", getStudent); // Assuming you get student by ID or Name
 
 export default router;

@@ -27,7 +27,7 @@ export const verifyStudent = asyncHandler(async (req, _, next) => {
       throw new ApiError(401, "Invalid access token");
     }
 
-    req.user = user;
+    req.student = user;
 
     next();
   } catch (error) {
@@ -56,7 +56,36 @@ export const verifyTutor = asyncHandler(async (req, _, next) => {
       throw new ApiError(401, "Invalid access token");
     }
 
-    req.user = user;
+    req.tutor = user;
+
+    next();
+  } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid token");
+  }
+});
+
+export const verifyAdmin = asyncHandler(async (req, _, next) => {
+  // console.log("Entering in verify JWT function");
+  try {
+    const token =
+      req.cookies?.accessToken ||
+      req.header("Authorization")?.replace("Bearer", "").trim();
+
+    // console.log("Yout token ", token);
+
+    if (!token) throw new ApiError(403, "Unauthorised request");
+
+    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
+    const user = await Admin.findById(decodedToken?._id).select(
+      "-password -refreshToken"
+    );
+
+    if (!user) {
+      throw new ApiError(401, "Invalid access token");
+    }
+
+    req.admin = user;
 
     next();
   } catch (error) {

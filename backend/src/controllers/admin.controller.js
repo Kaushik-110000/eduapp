@@ -8,7 +8,7 @@ import {
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import fs from "fs";
-
+import { Tutor } from "../models/tutor.model.js";
 // Generate access and refresh tokens for an admin
 const generateTokens = async (adminId) => {
   try {
@@ -171,13 +171,30 @@ const checkRefreshToken = asyncHandler((req, res) => {
 const getAdmin = asyncHandler(async (req, res) => {
   const { adminID, adminName } = req.params;
   const filter = adminID
-    ? { adminID: adminID.trim() }
+    ? { _id: adminID.trim() }
     : { adminName: adminName?.trim() };
-  const admin = await Admin.findOne(filter);
+  const admin = await Admin.findOne(filter).select("-password");
   if (!admin) throw new ApiError(404, "Admin not found");
   return res.status(200).json(new ApiResponse(200, admin, "Admin found"));
 });
 
+const verifyTutor = asyncHandler(async (req, res) => {
+  const { tutorID } = req.params;
+  const tutor = await Tutor.findOne({ _id: tutorID.trim() });
+  if (!tutor) throw new ApiError(404, "Tutor not found");
+  tutor.isPending = false;
+  await tutor.save();
+  return res.status(200).json(new ApiResponse(200, tutor, "Verified tutor"));
+});
+
+const listUnverifiedTutors = asyncHandler(async (req, res) => {
+  console.log("Hll");
+  const tutors = await Tutor.find({ isPending: true });
+  if (!tutors) throw new ApiError(404, "No tutors are pending");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, tutors, "List of pending tutors"));
+});
 export {
   registerAdmin,
   loginAdmin,
@@ -186,4 +203,6 @@ export {
   getCurrentAdmin,
   checkRefreshToken,
   getAdmin,
+  verifyTutor,
+  listUnverifiedTutors,
 };
