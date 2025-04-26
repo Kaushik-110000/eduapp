@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Register from './components/auth/Register';
-import Login from './components/auth/Login';
-import AuthLayout from './components/auth/AuthLayout';
+import Register from './page/auth/Register';
+import Login from './page/auth/Login';
+import AuthLayout from './page/auth/AuthLayout';
 // import StudentDashboard from './components/student/Dashboard';
 // import TutorDashboard from './components/tutor/Dashboard';
 // import AdminDashboard from './components/admin/Dashboard';
