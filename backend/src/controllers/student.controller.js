@@ -35,6 +35,7 @@ const registerStudent = asyncHandler(async (req, res) => {
   const { studentID, studentName, email, password, interests = [] } = req.body;
 
   // Validate required fields
+  console.log(req.body);
   if (
     [studentID, studentName, email, password].some((f) => !f || f.trim() === "")
   ) {
