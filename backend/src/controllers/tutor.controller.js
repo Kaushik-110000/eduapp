@@ -202,6 +202,7 @@ const createCourse = asyncHandler(async (req, res) => {
     coursePrice,
     courseDescription,
     studentsEnrolled = [],
+    tags = [],
   } = req.body;
   console.log("A", tutor);
   const course = await new Course({
@@ -210,6 +211,7 @@ const createCourse = asyncHandler(async (req, res) => {
     coursePrice,
     courseDescription,
     studentsEnrolled,
+    tags,
   });
 
   await course.save();
@@ -217,6 +219,15 @@ const createCourse = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, course, "New course created"));
 });
+
+const checkVerification = asyncHandler(async (req, res) => {
+  const { tutorID } = req.params;
+  const tutor = await Tutor.findOne({ _id: tutorID });
+  if (!tutor) throw new ApiError(404, "Not found tutor");
+  if (tutor.isPending == true) throw new ApiError(405, "Tutor is not verified");
+  return res.status(200).json(new ApiResponse(200, {}, "Tutor is verified"));
+});
+
 export {
   registerTutor,
   loginTutor,
@@ -226,4 +237,5 @@ export {
   checkRefreshToken,
   getTutor,
   createCourse,
+  checkVerification,
 };
