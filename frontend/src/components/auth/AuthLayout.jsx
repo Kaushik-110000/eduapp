@@ -1,4 +1,3 @@
-// src/layouts/AuthLayout.jsx
 import { Outlet, useLocation } from 'react-router-dom';
 
 const AuthLayout = () => {
