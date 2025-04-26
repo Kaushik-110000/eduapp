@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
-
+axios.defaults.withCredentials =true;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -80,7 +81,7 @@ const Login = () => {
         }
       }
 
-      const endpoint = `/${userType}/login`;
+      const endpoint = `${API_BASE_URL}/${userType}/login`;
       const response = await axios.post(endpoint, payload);
 
       // Handle remember me
