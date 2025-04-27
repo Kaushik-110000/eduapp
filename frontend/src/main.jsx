@@ -16,6 +16,8 @@ import CourseDetails from "./page/tutor/CourseDetails.jsx";
 import CourseView from "./page/student/CourseView.jsx";
 import LandingPage from "./components/LandingPage.jsx";
 import StudentDashboard from "./page/student/Dashboard.jsx";
+import AllCourses from "./components/AllCourses.jsx";
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -24,6 +26,10 @@ const router = createBrowserRouter([
       {
         path: "/",
         element: <LandingPage />
+      },
+      {
+        path: "/courses",
+        element: <AllCourses />
       },
       {
         path: "/register",

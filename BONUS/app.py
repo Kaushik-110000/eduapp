@@ -1,9 +1,13 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from recommender import recommend_for_user
 from analyzer import analyze_video_reviews
 from courseRecommender import recommend_courses_for_student
+from courseBot import LLMCourseBot
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": ["http://localhost:5173"]}})  # Allow requests from your frontend
+course_bot = LLMCourseBot()  # Initialize the course bot instance
 
 @app.route("/")
 def home():
@@ -47,7 +51,20 @@ def courseRecommend(student_id):
         "recommended_courses": recommended_courses
     }), 200
 
-
+@app.route("/courseBot", methods=["POST"])
+def course_bot_recommend():
+    data = request.get_json()
+    if not data or 'query' not in data:
+        return jsonify({"error": "No query provided in request body"}), 400
+    
+    user_query = data['query']
+    result = course_bot.process_query(user_query)
+    
+    # Get follow-up suggestions
+    suggestions = course_bot.get_suggestions(user_query)
+    result['suggestions'] = suggestions
+    
+    return jsonify(result), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

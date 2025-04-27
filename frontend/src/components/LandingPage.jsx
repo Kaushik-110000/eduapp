@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import courseservice from '../backend/courses.config.js';
+import ChatBot from './ChatBot';
 import './LandingPage.css';
 
 const LandingPage = () => {
@@ -95,7 +96,14 @@ const LandingPage = () => {
             <p>No courses available at the moment.</p>
           )}
         </div>
+        <div className="view-all-courses">
+          <Link to="/courses" className="view-all-btn">
+            View All Courses
+          </Link>
+        </div>
       </section>
+
+      <ChatBot />
     </div>
   );
 };

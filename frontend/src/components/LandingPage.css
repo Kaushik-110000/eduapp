@@ -215,4 +215,25 @@
 
 .view-course-btn:hover {
   background-color: #2980b9;
+}
+
+.view-all-courses {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.view-all-btn {
+  display: inline-block;
+  padding: 1rem 2rem;
+  background-color: #4299e1;
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.view-all-btn:hover {
+  background-color: #3182ce;
+  transform: translateY(-2px);
 } 
