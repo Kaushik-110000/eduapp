@@ -20,6 +20,31 @@ const StudentDashboard = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [student, setStudent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch current student data
+  const fetchStudentData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await authservice.getCurrentStudent();
+      console.log("Student data response:", res);
+      
+      if (res) {
+        // Check if res is the student data directly or if it's nested in a status property
+        const studentData = res.status ? res.data : res;
+        console.log("Processed student data:", studentData);
+        setStudent(studentData);
+      } else {
+        setError("No student data received");
+      }
+    } catch (error) {
+      console.error("Error fetching student:", error);
+      setError(error.message || "Failed to fetch student data");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Fetch all courses
   const fetchCourses = useCallback(async () => {
@@ -30,21 +55,6 @@ const StudentDashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching courses:", error);
-    }
-  }, []);
-
-  // Fetch current student data
-  const fetchStudentData = useCallback(async () => {
-    try {
-      await authservice.getCurrentStudent().then((res) => {
-        console.log("res");
-        console.log(res);
-        if (res && res.status) {
-          setStudent(res);
-        }
-      });
-    } catch (error) {
-      console.error("Error fetching student:", error);
     }
   }, []);
 
@@ -60,7 +70,7 @@ const StudentDashboard = () => {
   };
 
   // Filter enrolled courses
-  const enrolledCourses = student
+  const enrolledCourses = student?.coursesSubscribed 
     ? courses.filter((c) => student.coursesSubscribed.includes(c._id))
     : [];
 
@@ -212,14 +222,34 @@ const StudentDashboard = () => {
     },
   };
 
+  if (loading) {
+    return (
+      <div style={styles.container}>
+        <div style={{ textAlign: "center", padding: "2rem" }}>
+          Loading student data...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <div style={{ textAlign: "center", padding: "2rem", color: "red" }}>
+          Error: {error}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       {/* Header and Student Info */}
       <div style={styles.header}>
-        {student && (
+        {student?.avatar && (
           <img
             src={student.avatar}
-            alt={student.studentName}
+            alt={student.studentName || "Student"}
             style={styles.avatar}
           />
         )}
@@ -236,7 +266,7 @@ const StudentDashboard = () => {
             </div>
             <div style={styles.infoContent}>
               <span style={styles.infoLabel}>Email</span>
-              <span style={styles.infoValue}>{student.email}</span>
+              <span style={styles.infoValue}>{student.email || "Not provided"}</span>
             </div>
           </div>
           <div style={styles.infoCard}>
@@ -245,7 +275,7 @@ const StudentDashboard = () => {
             </div>
             <div style={styles.infoContent}>
               <span style={styles.infoLabel}>Student ID</span>
-              <span style={styles.infoValue}>{student.studentID}</span>
+              <span style={styles.infoValue}>{student.studentID || "Not provided"}</span>
             </div>
           </div>
           <div style={styles.infoCard}>
@@ -254,7 +284,11 @@ const StudentDashboard = () => {
             </div>
             <div style={styles.infoContent}>
               <span style={styles.infoLabel}>Interests</span>
-              <span style={styles.infoValue}>{student.interests.join(", ")}</span>
+              <span style={styles.infoValue}>
+                {student.interests?.length > 0 
+                  ? student.interests.join(", ") 
+                  : "No interests specified"}
+              </span>
             </div>
           </div>
           <div style={styles.infoCard}>
@@ -264,7 +298,9 @@ const StudentDashboard = () => {
             <div style={styles.infoContent}>
               <span style={styles.infoLabel}>Member Since</span>
               <span style={styles.infoValue}>
-                {new Date(student.createdAt).toLocaleDateString()}
+                {student.createdAt 
+                  ? new Date(student.createdAt).toLocaleDateString()
+                  : "Not available"}
               </span>
             </div>
           </div>
