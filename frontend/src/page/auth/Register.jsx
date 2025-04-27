@@ -1,39 +1,41 @@
 // src/components/auth/Register.jsx
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+axios.defaults.withCredentials = true;
 
 const Register = () => {
   const navigate = useNavigate();
-  const [userType, setUserType] = useState('student');
+  const [userType, setUserType] = useState("student");
   const [formData, setFormData] = useState({
-    id: '',
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    interests: '',
-    description: '',
+    id: "",
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    interests: "",
+    description: "",
   });
   const [avatar, setAvatar] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [previewUrl, setPreviewUrl] = useState('');
+  const [error, setError] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
 
   const handleTypeChange = (e) => {
     setUserType(e.target.value);
     setFormData({
-      id: '',
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      interests: '',
-      description: '',
+      id: "",
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      interests: "",
+      description: "",
     });
     setAvatar(null);
-    setPreviewUrl('');
-    setError('');
+    setPreviewUrl("");
+    setError("");
   };
 
   const handleChange = (e) => {
@@ -54,16 +56,21 @@ const Register = () => {
   };
 
   const validateForm = () => {
-    if (!formData.id || !formData.name || !formData.email || !formData.password) {
-      setError('All fields are required');
+    if (
+      !formData.id ||
+      !formData.name ||
+      !formData.email ||
+      !formData.password
+    ) {
+      setError("All fields are required");
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return false;
     }
     if (!avatar) {
-      setError('Avatar image is required');
+      setError("Avatar image is required");
       return false;
     }
     return true;
@@ -74,37 +81,42 @@ const Register = () => {
     if (!validateForm()) return;
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const form = new FormData();
-      if (userType === 'student') {
-        form.append('studentID', formData.id);
-        form.append('studentName', formData.name);
-        form.append('interests', JSON.stringify(formData.interests.split(',').map(i => i.trim())));
-      } else if (userType === 'tutor') {
-        form.append('tutorID', formData.id);
-        form.append('tutorName', formData.name);
-        form.append('description', formData.description);
+      if (userType === "student") {
+        form.append("studentID", formData.id);
+        form.append("studentName", formData.name);
+        form.append(
+          "interests",
+          JSON.stringify(formData.interests.split(",").map((i) => i.trim()))
+        );
+      } else if (userType === "tutor") {
+        form.append("tutorID", formData.id);
+        form.append("tutorName", formData.name);
+        form.append("description", formData.description);
       } else {
-        form.append('adminID', formData.id);
-        form.append('adminName', formData.name);
+        form.append("adminID", formData.id);
+        form.append("adminName", formData.name);
       }
 
-      form.append('email', formData.email);
-      form.append('password', formData.password);
-      form.append('avatar', avatar);
+      form.append("email", formData.email);
+      form.append("password", formData.password);
+      form.append("avatar", avatar);
 
-      const endpoint = `${process.env.VITE_BACKEND}/${userType}/register`;
+      const endpoint = `${API_BASE_URL}/${userType}/register`;
       const response = await axios.post(endpoint, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
-      console.log('Registration successful:', response.data);
-      navigate('/login', { state: { message: 'Registration successful! Please login.' } });
+      console.log("Registration successful:", response.data);
+      navigate("/login", {
+        state: { message: "Registration successful! Please login." },
+      });
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
-      console.error('Registration error:', err);
+      setError(err.response?.data?.message || "Registration failed");
+      console.error("Registration error:", err);
     } finally {
       setLoading(false);
     }
@@ -113,7 +125,9 @@ const Register = () => {
   return (
     <div className="w-full flex flex-col items-center justify-center p-8">
       <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg text-black">
-        <h2 className="text-2xl font-bold mb-6 text-center">Create an Account</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          Create an Account
+        </h2>
 
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
@@ -124,7 +138,7 @@ const Register = () => {
         <div className="mb-4">
           <label className="block text-gray-700 mb-2">I am a:</label>
           <div className="flex gap-4">
-            {['student', 'tutor', 'admin'].map((type) => (
+            {["student", "tutor", "admin"].map((type) => (
               <label key={type} className="flex items-center">
                 <input
                   type="radio"
@@ -141,7 +155,9 @@ const Register = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-gray-700 mb-2">{userType.charAt(0).toUpperCase() + userType.slice(1)} ID:</label>
+            <label className="block text-gray-700 mb-2">
+              {userType.charAt(0).toUpperCase() + userType.slice(1)} ID:
+            </label>
             <input
               type="text"
               name="id"
@@ -153,7 +169,9 @@ const Register = () => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-gray-700 mb-2">{userType.charAt(0).toUpperCase() + userType.slice(1)} Name:</label>
+            <label className="block text-gray-700 mb-2">
+              {userType.charAt(0).toUpperCase() + userType.slice(1)} Name:
+            </label>
             <input
               type="text"
               name="name"
@@ -189,7 +207,9 @@ const Register = () => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-gray-700 mb-2">Confirm Password:</label>
+            <label className="block text-gray-700 mb-2">
+              Confirm Password:
+            </label>
             <input
               type="password"
               name="confirmPassword"
@@ -200,9 +220,11 @@ const Register = () => {
             />
           </div>
 
-          {userType === 'student' && (
+          {userType === "student" && (
             <div className="mb-4">
-              <label className="block text-gray-700 mb-2">Interests (comma separated):</label>
+              <label className="block text-gray-700 mb-2">
+                Interests (comma separated):
+              </label>
               <input
                 type="text"
                 name="interests"
@@ -214,7 +236,7 @@ const Register = () => {
             </div>
           )}
 
-          {userType === 'tutor' && (
+          {userType === "tutor" && (
             <div className="mb-4">
               <label className="block text-gray-700 mb-2">Description:</label>
               <textarea
@@ -253,13 +275,13 @@ const Register = () => {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50"
           >
-            {loading ? 'Registering...' : 'Register'}
+            {loading ? "Registering..." : "Register"}
           </button>
         </form>
 
         <div className="mt-4 text-center">
           <p className="text-black">
-            Already have an account?{' '}
+            Already have an account?{" "}
             <a href="/login" className="text-blue-600 hover:underline">
               Login
             </a>

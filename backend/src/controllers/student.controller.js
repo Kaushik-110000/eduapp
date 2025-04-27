@@ -36,6 +36,7 @@ const registerStudent = asyncHandler(async (req, res) => {
   const { studentID, studentName, email, password, interests = [] } = req.body;
 
   // Validate required fields
+  console.log(req.body);
   if (
     [studentID, studentName, email, password].some((f) => !f || f.trim() === "")
   ) {
@@ -111,7 +112,10 @@ const loginStudent = asyncHandler(async (req, res) => {
     ...cookieOpts,
     maxAge: 230 * 24 * 60 * 60 * 1000,
   });
-
+  res.cookie("userType", "student", {
+    ...cookieOpts,
+    maxAge: 230 * 24 * 60 * 60 * 1000,
+  });
   const safeStudent = await Student.findById(student._id).select("-password");
   return res
     .status(200)
@@ -136,6 +140,7 @@ const logoutStudent = asyncHandler(async (req, res) => {
   return res
     .clearCookie("accessToken", cookieOpts)
     .clearCookie("refreshToken", cookieOpts)
+    .clearCookie("userType", cookieOpts)
     .status(200)
     .json(new ApiResponse(200, {}, "Logout successful"));
 });
