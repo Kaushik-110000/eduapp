@@ -97,17 +97,9 @@ const TutorDashboard = () => {
         ...newCourse,
         coursePrice: parseFloat(newCourse.coursePrice),
         tags: newCourse.tags.split(',').map(tag => tag.trim()),
-        tutors: [tutor._id],
       };
 
-      const createdCourse = await courseService.createCourse(courseData);
-      
-      // Update the tutor's coursesTaught array
-      const updatedTutor = {
-        ...tutor,
-        coursesTaught: [...tutor.coursesTaught, createdCourse._id]
-      };
-      await tutorService.updateTutor(tutor._id, updatedTutor);
+      await tutorService.createCourse(courseData);
       
       setIsAddingCourse(false);
       setNewCourse({
@@ -117,9 +109,8 @@ const TutorDashboard = () => {
         tags: '',
       });
       
-      // Refresh both tutor data and courses
+      // Refresh tutor data to get updated coursesTaught array
       await fetchTutorData();
-      await fetchCourses();
     } catch (error) {
       console.error("Error creating course:", error);
       setError("Failed to create course");
@@ -799,7 +790,18 @@ const TutorDashboard = () => {
             {courses.length > 0 ? (
               <div style={courseStyles.courseGrid}>
                 {courses.map((course) => (
-                  <div key={course._id} style={courseStyles.courseCard}>
+                  <div 
+                    key={course._id} 
+                    style={courseStyles.courseCard}
+                    onClick={() => navigate(`/tutor/course/${course._id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        navigate(`/tutor/course/${course._id}`);
+                      }
+                    }}
+                  >
                     <div style={courseStyles.courseHeader}>
                       <h3 style={courseStyles.courseTitle}>{course.courseName}</h3>
                       <div style={courseStyles.coursePrice}>
@@ -818,13 +820,19 @@ const TutorDashboard = () => {
                     <div style={courseStyles.courseActions}>
                       <button
                         style={{ ...courseStyles.actionButton, ...courseStyles.editButton }}
-                        onClick={() => navigate(`/edit-course/${course._id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/edit-course/${course._id}`);
+                        }}
                       >
                         <Edit size={16} />
                       </button>
                       <button
                         style={{ ...courseStyles.actionButton, ...courseStyles.deleteButton }}
-                        onClick={() => handleDeleteCourse(course._id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCourse(course._id);
+                        }}
                       >
                         <Trash size={16} />
                       </button>

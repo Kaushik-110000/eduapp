@@ -36,17 +36,37 @@ class CourseService {
   }
 
   /**
-   * Create a video room for a course (tutor only)
-   * @param {Object} roomData - Data for creating the video room
+   * Get all videos for a specific course
+   * @param {string} courseId - The ID of the course
    */
-  async createVideoRoom(roomData) {
+  async getAllVideos(courseId) {
     try {
+      const res = await axios.get(
+        `${server.serverUrl}/courses/videos/${encodeURIComponent(courseId)}`
+      );
+      return res.data.data;
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  /**
+   * Create a video room for a course (tutor only)
+   * @param {Object} videoData - Data for creating the video room
+   * @param {string} videoData.url - The video URL
+   * @param {string} videoData.courseID - The course ID
+   */
+  async createVideoRoom(videoData) {
+    try {
+      console.log("Creating video room with data:", videoData);
       const res = await axios.post(
         `${server.serverUrl}/courses/createVideo`,
-        roomData
+        videoData
       );
+      console.log("Video room creation response:", res.data);
       return res.data;
     } catch (err) {
+      console.error("Error in createVideoRoom:", err);
       throw err;
     }
   }

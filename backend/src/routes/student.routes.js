@@ -33,5 +33,5 @@ router.get("/current-student", verifyStudent, getCurrentStudent);
 router.get("/check-refresh", checkRefreshToken);
 router.get("/:studentID", getStudent);
 router.post("/generatePaymentOrder", verifyStudent, generatePaymentOrder);
-router.post("/enrollCourse", verifyStudent, generatePaymentOrder);
+router.post("/enrollCourse", verifyStudent, enrollCourse);
 export default router;

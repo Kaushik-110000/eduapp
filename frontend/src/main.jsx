@@ -9,12 +9,22 @@ import Register from "./page/auth/Register.jsx";
 import Login from "./page/auth/Login.jsx";
 import AdminDashboard from "./page/admin/Dashboard.jsx";
 import TutorDashboard from "./page/tutor/Dashboard.jsx";
+// import StudentDashboard from "./page/student/Dashboard.jsx";
+// import StudentDashboard from "./page/student/Dashboard.jsx";
+
+import CourseDetails from "./page/tutor/CourseDetails.jsx";
+import CourseView from "./page/student/CourseView.jsx";
+import LandingPage from "./components/LandingPage.jsx";
 import StudentDashboard from "./page/student/Dashboard.jsx";
 const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
     children: [
+      {
+        path: "/",
+        element: <LandingPage />
+      },
       {
         path: "/register",
         element: <Register />,
@@ -33,7 +43,15 @@ const router = createBrowserRouter([
       },
       {
         path: "/student/dashboard",
-        element: <StudentDashboard />,
+        element: <StudentDashboard/>
+      },
+      {
+        path: "/tutor/course/:courseId",
+        element: <CourseDetails />
+      },
+      {
+        path: "/student/course/:courseId",
+        element: <CourseView />,
       },
     ],
   },

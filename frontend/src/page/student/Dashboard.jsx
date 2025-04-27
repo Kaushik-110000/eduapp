@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import courseservice from "../../backend/courses.config";
 import studentService from "../../backend/student.config";
+import paymentService from "../../backend/payment.config";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const StudentDashboard = () => {
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   // Fetch current student data
   const fetchStudentData = useCallback(async () => {
@@ -61,9 +63,64 @@ const StudentDashboard = () => {
   }, [fetchCourses, fetchStudentData]);
 
   // Handler for buying/enrolling in a course
-  const handleEnrollment = (courseId) => {
-    console.log(`Enroll clicked for course ID: ${courseId}`);
-    // TODO: call enrollment API, then update state
+  const handleEnrollment = async (courseId) => {
+    try {
+      setPaymentLoading(true);
+      console.log(`Initiating enrollment for course ID: ${courseId}`);
+
+      // Generate payment order
+      const orderResponse = await paymentService.generateOrder(courseId);
+      console.log("Payment order generated:", orderResponse);
+
+      // Initialize Razorpay
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: orderResponse.data.amount,
+        currency: orderResponse.data.currency,
+        name: "EduApp",
+        description: "Course Enrollment",
+        order_id: orderResponse.data.id,
+        handler: async function (response) {
+          try {
+            console.log("Payment successful:", response);
+            
+            // Verify payment and enroll
+            const paymentData = {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              email: student.email,
+              courseID: courseId,
+            };
+
+            await paymentService.verifyPayment(paymentData);
+            console.log("Payment verified and course enrolled");
+
+            // Refresh student data to update enrolled courses
+            await fetchStudentData();
+            await fetchCourses();
+          } catch (error) {
+            console.error("Error in payment verification:", error);
+            setError("Payment verification failed. Please contact support.");
+          }
+        },
+        prefill: {
+          name: student.studentName,
+          email: student.email,
+        },
+        theme: {
+          color: "#3b82f6",
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      console.error("Error in enrollment process:", error);
+      setError("Failed to initiate enrollment. Please try again.");
+    } finally {
+      setPaymentLoading(false);
+    }
   };
 
   // Filter enrolled courses
@@ -312,7 +369,18 @@ const StudentDashboard = () => {
       {enrolledCourses.length > 0 ? (
         <div style={styles.grid}>
           {enrolledCourses.map((course) => (
-            <div key={course._id} style={styles.card}>
+            <div 
+              key={course._id} 
+              style={styles.card}
+              onClick={() => navigate(`/student/course/${course._id}`)}
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  navigate(`/student/course/${course._id}`);
+                }
+              }}
+            >
               <h3 style={styles.title}>{course.courseName}</h3>
               <p style={styles.desc}>{course.courseDescription}</p>
               <p style={styles.price}>${course.coursePrice}</p>
@@ -349,16 +417,37 @@ const StudentDashboard = () => {
                 </span>
               ) : (
                 <button
-                  style={styles.button}
+                  style={{
+                    ...styles.button,
+                    opacity: paymentLoading ? 0.7 : 1,
+                    cursor: paymentLoading ? "not-allowed" : "pointer",
+                  }}
                   onClick={() => handleEnrollment(course._id)}
+                  disabled={paymentLoading}
                 >
-                  Enroll Now
+                  {paymentLoading ? "Processing..." : "Enroll Now"}
                 </button>
               )}
             </div>
           );
         })}
       </div>
+
+      {error && (
+        <div style={{
+          position: "fixed",
+          top: "1rem",
+          right: "1rem",
+          backgroundColor: "#ef4444",
+          color: "white",
+          padding: "1rem",
+          borderRadius: "0.5rem",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+          zIndex: 1000,
+        }}>
+          {error}
+        </div>
+      )}
     </div>
   );
 };
