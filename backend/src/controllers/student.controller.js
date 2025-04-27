@@ -216,10 +216,20 @@ const enrollCourse = asyncHandler(async (req, res) => {
     email,
     courseID,
   } = await req.body;
+
+  // Find student and course
   const student = await Student.findOne({ email });
-  if (!student) throw new ApiError(404, "Not found the student");
+  if (!student) throw new ApiError(404, "Student not found");
+  
   const course = await Course.findOne({ _id: courseID });
-  if (!course) throw new ApiError(404, "Course not  found");
+  if (!course) throw new ApiError(404, "Course not found");
+
+  // Check if already enrolled
+  if (student.coursesSubscribed.includes(courseID)) {
+    throw new ApiError(400, "Student is already enrolled in this course");
+  }
+
+  // Create payment record
   const enrollment = new Payment({
     razorpay_order_id,
     razorpay_payment_id,
@@ -227,10 +237,29 @@ const enrollCourse = asyncHandler(async (req, res) => {
     student_ID: student._id,
     course_ID: courseID,
   });
+
+  // Update student and course documents
   student.coursesSubscribed.push(courseID);
   course.studentsEnrolled.push(student._id);
-  enrollment.save();
-  return res.status(200).json(new ApiResponse(200, {}, "Payment completed"));
+
+  // Save all changes in a transaction
+  try {
+    await Promise.all([
+      student.save(),
+      course.save(),
+      enrollment.save()
+    ]);
+
+    return res.status(200).json(
+      new ApiResponse(200, {
+        student: await Student.findById(student._id).select("-password"),
+        course: course
+      }, "Course enrolled successfully")
+    );
+  } catch (error) {
+    console.error("Error in enrollment:", error);
+    throw new ApiError(500, "Failed to complete enrollment");
+  }
 });
 
 const generatePaymentOrder = asyncHandler(async (req, res) => {
