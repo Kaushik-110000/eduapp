@@ -1,26 +1,30 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
-import axios from 'axios';
-axios.defaults.withCredentials =true;
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import axios from "axios";
+axios.defaults.withCredentials = true;
+import { login as storeLogin } from "../../store/authSlice.js";
+import { useDispatch } from "react-redux";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const Login = () => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const [userType, setUserType] = useState('student');
+  const [userType, setUserType] = useState("student");
   const [formData, setFormData] = useState({
-    identifier: '', // Can be ID or email
-    password: '',
+    identifier: "", // Can be ID or email
+    password: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
     // Check if we have a success message from registration
     if (location.state?.message) {
       setMessage(location.state.message);
-      
+
       // Clear the message from location state after displaying it
       window.history.replaceState({}, document.title);
     }
@@ -28,18 +32,18 @@ const Login = () => {
 
   const handleTypeChange = (e) => {
     setUserType(e.target.value);
-    setError(''); // Clear any errors when changing user type
+    setError(""); // Clear any errors when changing user type
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    if (error) setError(''); // Clear error when user types
+    if (error) setError(""); // Clear error when user types
   };
 
   const validateForm = () => {
     if (!formData.identifier || !formData.password) {
-      setError('Please enter both identifier and password');
+      setError("Please enter both identifier and password");
       return false;
     }
     return true;
@@ -48,26 +52,26 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
+
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       // Determine if identifier is email or ID
-      const isEmail = formData.identifier.includes('@');
-      
+      const isEmail = formData.identifier.includes("@");
+
       const payload = {
-        password: formData.password
+        password: formData.password,
       };
-      
+
       // Set the right field based on user type and identifier type
-      if (userType === 'student') {
+      if (userType === "student") {
         if (isEmail) {
           payload.email = formData.identifier;
         } else {
           payload.studentID = formData.identifier;
         }
-      } else if (userType === 'tutor') {
+      } else if (userType === "tutor") {
         if (isEmail) {
           payload.email = formData.identifier;
         } else {
@@ -85,104 +89,112 @@ const Login = () => {
       const response = await axios.post(endpoint, payload);
 
       // Handle remember me
+      console.log(
+        response.data.data.student ||
+          response.data.data.tutor ||
+          response.data.data.admin
+      );
+      const user =
+        response.data.data.student ||
+        response.data.data.tutor ||
+        response.data.data.admin;
+
       const storageMethod = rememberMe ? localStorage : sessionStorage;
-      
-      // Store tokens
-      storageMethod.setItem('accessToken', response.data.data.accessToken);
-      storageMethod.setItem('refreshToken', response.data.data.refreshToken);
-      storageMethod.setItem('userType', userType);
-      
-      // Store user data
-      const userData = response.data.data[userType]; // student, tutor, or admin object
-      storageMethod.setItem('user', JSON.stringify(userData));
+
+      dispatch(storeLogin({ userData: user }));
+      storageMethod.setItem("userType", userType);
 
       // Redirect based on user type
-      if (userType === 'student') {
-        navigate('/student/dashboard');
-      } else if (userType === 'tutor') {
-        navigate('/tutor/dashboard');
+      if (userType === "student") {
+        navigate("/student/dashboard");
+      } else if (userType === "tutor") {
+        navigate("/tutor/dashboard");
       } else {
-        navigate('/admin/dashboard');
+        navigate("/admin/dashboard");
       }
     } catch (err) {
-      let errorMessage = 'Login failed. Please check your credentials and try again.';
-      
+      let errorMessage =
+        "Login failed. Please check your credentials and try again.";
       if (err.response?.status === 401) {
-        errorMessage = 'Invalid credentials. Please check your ID/email and password.';
+        errorMessage =
+          "Invalid credentials. Please check your ID/email and password.";
       } else if (err.response?.status === 404) {
-        errorMessage = 'Account not found. Please check your ID/email or register a new account.';
+        errorMessage =
+          "Account not found. Please check your ID/email or register a new account.";
       } else if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       }
-      
       setError(errorMessage);
-      console.error('Login error:', err);
+      console.error("Login error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleForgotPassword = () => {
-    navigate('/forgot-password', { state: { userType } });
-  };
-
   return (
     <div className="max-w-md mx-auto p-8 bg-white rounded-lg shadow-xl mt-10">
-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
-      
+      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
+        Sign In
+      </h2>
+
       {message && (
         <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 text-green-700 rounded-md">
           <p className="font-medium">Success</p>
           <p>{message}</p>
         </div>
       )}
-      
+
       {error && (
         <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-md">
           <p className="font-medium">Error</p>
           <p>{error}</p>
         </div>
       )}
-      
+
       <div className="mb-6">
-        <label className="block text-gray-700 font-medium mb-2">Account Type</label>
+        <label className="block text-gray-700 font-medium mb-2">
+          Account Type
+        </label>
         <div className="flex gap-6">
           <label className="flex items-center cursor-pointer">
             <input
               type="radio"
               value="student"
-              checked={userType === 'student'}
+              checked={userType === "student"}
               onChange={handleTypeChange}
               className="mr-2 h-4 w-4 text-blue-600"
             />
-            <span className='text-black'>Student</span>
+            <span className="text-black">Student</span>
           </label>
           <label className="flex items-center cursor-pointer">
             <input
               type="radio"
               value="tutor"
-              checked={userType === 'tutor'}
+              checked={userType === "tutor"}
               onChange={handleTypeChange}
               className="mr-2 h-4 w-4 text-blue-600"
             />
-            <span className='text-black'>Tutor</span>
+            <span className="text-black">Tutor</span>
           </label>
           <label className="flex items-center cursor-pointer">
             <input
               type="radio"
               value="admin"
-              checked={userType === 'admin'}
+              checked={userType === "admin"}
               onChange={handleTypeChange}
               className="mr-2 h-4 w-4 text-blue-600"
             />
-            <span className='text-black'>Admin</span>
+            <span className="text-black">Admin</span>
           </label>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="block text-gray-700 font-medium mb-2" htmlFor="identifier">
+          <label
+            className="block text-gray-700 font-medium mb-2"
+            htmlFor="identifier"
+          >
             Email or ID <span className="text-red-500">*</span>
           </label>
           <input
@@ -198,7 +210,10 @@ const Login = () => {
         </div>
 
         <div>
-          <label className="block text-gray-700 font-medium mb-2" htmlFor="password">
+          <label
+            className="block text-gray-700 font-medium mb-2"
+            htmlFor="password"
+          >
             Password <span className="text-red-500">*</span>
           </label>
           <input
@@ -212,26 +227,6 @@ const Login = () => {
             placeholder="Enter your password"
           />
         </div>
-
-        <div className="flex items-center justify-between">
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={() => setRememberMe(!rememberMe)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <span className="ml-2 text-gray-700">Remember me</span>
-          </label>
-          <button
-            type="button"
-            onClick={handleForgotPassword}
-            className="text-blue-600 hover:underline text-sm font-medium"
-          >
-            Forgot password?
-          </button>
-        </div>
-
         <button
           type="submit"
           disabled={loading}
@@ -239,22 +234,41 @@ const Login = () => {
         >
           {loading ? (
             <span className="flex items-center justify-center">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <svg
+                className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
               Signing in...
             </span>
           ) : (
-            'Sign In'
+            "Sign In"
           )}
         </button>
       </form>
 
       <div className="mt-6 text-center">
         <p className="text-gray-600">
-          Don't have an account?{' '}
-          <Link to="/register" className="text-blue-600 hover:underline font-medium">
+          Don't have an account?{" "}
+          <Link
+            to="/register"
+            className="text-blue-600 hover:underline font-medium"
+          >
             Create an account
           </Link>
         </p>

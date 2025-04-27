@@ -8,4 +8,11 @@ const allCourses = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, courses, "Fetched all courses"));
 });
-export { allCourses };
+
+const getCourse = asyncHandler(async (req, res) => {
+  const { courseId } = req.params;
+  const course = await Course.findOne({ _id: courseId });
+  if (!course) throw new ApiError(404, "Course not found");
+  return res.status(200).json(new ApiResponse(200, course, "Course found"));
+});
+export { allCourses, getCourse };
