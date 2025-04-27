@@ -5,8 +5,9 @@ import { Comment } from "../models/comments.model.js";
 import { Video } from "../models/videos.model.js";
 const createComment = asyncHandler(async (req, res) => {
   const { content, studentId, videoId } = req.body;
+  console.log(content, studentId, videoId)
   const comment = new Comment({
-    content,
+    comment: content,
     studentId,
     videoId,
   });

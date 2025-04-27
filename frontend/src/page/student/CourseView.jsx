@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
-import { Video, MessageSquare, ArrowLeft, Send } from "lucide-react";
+import { Video, MessageSquare, ArrowLeft, Send, Star } from "lucide-react";
 import courseService from "../../backend/course.config";
 import studentService from "../../backend/student.config";
 import videosService from "../../backend/videos.config";
+import Courseservice from "../../backend/courses.config";
 
 const CourseView = () => {
   const { courseId } = useParams();
@@ -19,6 +20,9 @@ const CourseView = () => {
   const [error, setError] = useState(null);
   const socketRef = useRef();
   const messagesEndRef = useRef(null);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [commentLoading, setCommentLoading] = useState(false);
 
   // Fetch course, student, and videos data
   useEffect(() => {
@@ -29,6 +33,7 @@ const CourseView = () => {
           courseService.getCourse(courseId),
           studentService.getCurrentStudent(),
           videosService.getVideosByCourseId(courseId),
+        //   Courseservice.getVideoComments(videoId)
         ]);
         console.log(courseData, studentData, videosData);
         setCourse(courseData);
@@ -139,6 +144,45 @@ const CourseView = () => {
     });
 
     setNewMessage("");
+  };
+
+  // Fetch comments when video is selected
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (selectedVideo) {
+        try {
+          setCommentLoading(true);
+          const commentsData = await Courseservice.getVideoComments(selectedVideo._id);
+          setComments(commentsData);
+        } catch (error) {
+          console.error("Error fetching comments:", error);
+        } finally {
+          setCommentLoading(false);
+        }
+      }
+    };
+
+    fetchComments();
+  }, [selectedVideo]);
+
+  // Handle comment submission
+  const handleSubmitComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || !selectedVideo || !student) return;
+
+    try {
+      const commentData = {
+        content: newComment,
+        studentId: student._id,
+        videoId: selectedVideo._id
+      };
+
+      const response = await Courseservice.postComments(commentData);
+      setComments(prev => [...prev, response]);
+      setNewComment("");
+    } catch (error) {
+      console.error("Error posting comment:", error);
+    }
   };
 
   const styles = {
@@ -298,6 +342,87 @@ const CourseView = () => {
         backgroundColor: "#2563eb",
       },
     },
+    reviewSection: {
+      marginTop: "2rem",
+      padding: "1.5rem",
+      backgroundColor: "#ffffff",
+      borderRadius: "0.5rem",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    },
+    reviewTitle: {
+      fontSize: "1.5rem",
+      fontWeight: "600",
+      color: "#0f172a",
+      marginBottom: "1rem",
+    },
+    commentForm: {
+      marginBottom: "2rem",
+    },
+    commentInput: {
+      width: "100%",
+      padding: "0.75rem",
+      borderRadius: "0.5rem",
+      border: "1px solid #e2e8f0",
+      marginBottom: "1rem",
+      resize: "vertical",
+      "&:focus": {
+        outline: "none",
+        borderColor: "#3b82f6",
+        boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)",
+      },
+    },
+    submitButton: {
+      padding: "0.75rem 1.5rem",
+      backgroundColor: "#3b82f6",
+      color: "#ffffff",
+      border: "none",
+      borderRadius: "0.5rem",
+      cursor: "pointer",
+      "&:hover": {
+        backgroundColor: "#2563eb",
+      },
+      "&:disabled": {
+        backgroundColor: "#94a3b8",
+        cursor: "not-allowed",
+      },
+    },
+    commentsList: {
+      marginTop: "1rem",
+    },
+    commentCard: {
+      padding: "1rem",
+      backgroundColor: "#f8fafc",
+      borderRadius: "0.5rem",
+      marginBottom: "1rem",
+    },
+    commentHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: "0.5rem",
+    },
+    commentUser: {
+      fontWeight: "500",
+      color: "#0f172a",
+    },
+    commentDate: {
+      fontSize: "0.875rem",
+      color: "#64748b",
+    },
+    commentText: {
+      color: "#475569",
+      lineHeight: "1.5",
+    },
+    loadingText: {
+      textAlign: "center",
+      color: "#64748b",
+      padding: "1rem",
+    },
+    noComments: {
+      textAlign: "center",
+      color: "#64748b",
+      padding: "1rem",
+      fontStyle: "italic",
+    },
   };
 
   if (loading) {
@@ -371,6 +496,54 @@ const CourseView = () => {
                 </div>
               ))}
           </div>
+
+          {/* Review Section */}
+          {selectedVideo && (
+            <div style={styles.reviewSection}>
+              <h3 style={styles.reviewTitle}>Reviews</h3>
+              
+              {/* Comment Form */}
+              <form style={styles.commentForm} onSubmit={handleSubmitComment}>
+                <textarea
+                  style={styles.commentInput}
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Write your review..."
+                  rows={3}
+                />
+                <button
+                  type="submit"
+                  style={styles.submitButton}
+                  disabled={!newComment.trim() || commentLoading}
+                >
+                  {commentLoading ? "Posting..." : "Post Review"}
+                </button>
+              </form>
+
+              {/* Comments List */}
+              <div style={styles.commentsList}>
+                {commentLoading ? (
+                  <div style={styles.loadingText}>Loading reviews...</div>
+                ) : comments.length > 0 ? (
+                  comments.map((comment) => (
+                    <div key={comment._id} style={styles.commentCard}>
+                      <div style={styles.commentHeader}>
+                        <span style={styles.commentUser}>
+                          {comment.studentId?.studentName || "Anonymous"}
+                        </span>
+                        <span style={styles.commentDate}>
+                          {new Date(comment.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p style={styles.commentText}>{comment.comment}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div style={styles.noComments}>No reviews yet. Be the first to review!</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={styles.chatSection}>

@@ -11,7 +11,7 @@ import {
   enrollCourse,
 } from "../controllers/student.controller.js";
 
-import { createComment } from "../controllers/comment.controller.js";
+import { createComment, giveReviewOnVideos } from "../controllers/comment.controller.js";
 const router = Router();
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyStudent } from "../middlewares/auth.middleware.js";
@@ -35,5 +35,6 @@ router.get("/check-refresh", checkRefreshToken);
 router.get("/:studentID", getStudent);
 router.post("/generatePaymentOrder", verifyStudent, generatePaymentOrder);
 router.post("/enrollCourse", verifyStudent, enrollCourse);
-router.post("/postcomment", verifyStudent, createComment);
+router.post("/postcomment", createComment);
+router.get("/courses/:videoId/comments", verifyStudent, giveReviewOnVideos);
 export default router;
