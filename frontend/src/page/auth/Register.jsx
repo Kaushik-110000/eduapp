@@ -95,7 +95,7 @@ const Register = () => {
       form.append('password', formData.password);
       form.append('avatar', avatar);
 
-      const endpoint = `/${userType}/register`;
+      const endpoint = `${process.env.VITE_BACKEND}/${userType}/register`;
       const response = await axios.post(endpoint, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
