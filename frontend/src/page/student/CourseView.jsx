@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
-import {
-  Video,
-  MessageSquare,
-  ArrowLeft,
-  Send,
-} from "lucide-react";
+import { Video, MessageSquare, ArrowLeft, Send } from "lucide-react";
 import courseService from "../../backend/course.config";
 import studentService from "../../backend/student.config";
 import videosService from "../../backend/videos.config";
@@ -33,7 +28,7 @@ const CourseView = () => {
         const [courseData, studentData, videosData] = await Promise.all([
           courseService.getCourse(courseId),
           studentService.getCurrentStudent(),
-          videosService.getVideosByCourseId(courseId)
+          videosService.getVideosByCourseId(courseId),
         ]);
         console.log(courseData, studentData, videosData);
         setCourse(courseData);
@@ -52,9 +47,10 @@ const CourseView = () => {
 
   // Initialize socket connection
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:8011";
+    const socketUrl =
+      import.meta.env.VITE_SERVER_URL || "http://localhost:8011";
     console.log("Connecting to socket server:", socketUrl);
-    
+
     socketRef.current = io(socketUrl, {
       withCredentials: true,
       transports: ["websocket"],
@@ -116,7 +112,11 @@ const CourseView = () => {
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedVideo || !student) {
-      console.log("Cannot send message:", { newMessage, selectedVideo, student });
+      console.log("Cannot send message:", {
+        newMessage,
+        selectedVideo,
+        student,
+      });
       return;
     }
 
@@ -355,19 +355,21 @@ const CourseView = () => {
           )}
 
           <div style={styles.videoList}>
-            {videos?.length > 0 && videos.map((video) => (
-              <div
-                key={video._id}
-                style={{
-                  ...styles.videoItem,
-                  ...(selectedVideo?._id === video._id && styles.videoItemActive),
-                }}
-                onClick={() => setSelectedVideo(video)}
-              >
-                <Video size={20} style={{ marginRight: "1rem" }} />
-                <span>Video Session</span>
-              </div>
-            ))}
+            {videos?.length > 0 &&
+              videos.map((video) => (
+                <div
+                  key={video._id}
+                  style={{
+                    ...styles.videoItem,
+                    ...(selectedVideo?._id === video._id &&
+                      styles.videoItemActive),
+                  }}
+                  onClick={() => setSelectedVideo(video)}
+                >
+                  <Video size={20} style={{ marginRight: "1rem" }} />
+                  <span>Video Session</span>
+                </div>
+              ))}
           </div>
         </div>
 
@@ -378,17 +380,18 @@ const CourseView = () => {
           </div>
 
           <div style={styles.chatMessages}>
-            {messages?.length > 0 && messages.map((message) => (
-              <div key={message.id} style={styles.message}>
-                <div style={styles.messageHeader}>
-                  <span style={styles.messageUser}>{message.user.name}</span>
-                  <span style={styles.messageTime}>
-                    {new Date(message.timestamp).toLocaleTimeString()}
-                  </span>
+            {messages?.length > 0 &&
+              messages.map((message) => (
+                <div key={message.id} style={styles.message}>
+                  <div style={styles.messageHeader}>
+                    <span style={styles.messageUser}>{message.user.name}</span>
+                    <span style={styles.messageTime}>
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <p style={styles.messageText}>{message.text}</p>
                 </div>
-                <p style={styles.messageText}>{message.text}</p>
-              </div>
-            ))}
+              ))}
             <div ref={messagesEndRef} />
           </div>
 
@@ -416,4 +419,4 @@ const CourseView = () => {
   );
 };
 
-export default CourseView; 
+export default CourseView;
