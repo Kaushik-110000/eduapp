@@ -1,8 +1,31 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import courseservice from '../backend/courses.config.js';
 import './LandingPage.css';
 
 const LandingPage = () => {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const data = await courseservice.getAllCourses();
+        setCourses(data.slice(0, 3)); // Get top 3 courses
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+        setLoading(false);
+      }
+    };
+    fetchCourses();
+  }, []);
+
+  const handleViewCourse = (courseId) => {
+    navigate('/login', { state: { from: `/courses/${courseId}` } });
+  };
+
   return (
     <div className="landing-container">
       <nav className="navbar">
@@ -43,6 +66,34 @@ const LandingPage = () => {
         <div className="feature-card">
           <h3>Community Learning</h3>
           <p>Join discussions and learn with peers</p>
+        </div>
+      </section>
+
+      <section className="top-courses">
+        <h2>Our Top Courses</h2>
+        <div className="courses-grid">
+          {loading ? (
+            <p>Loading courses...</p>
+          ) : courses.length > 0 ? (
+            courses.map((course) => (
+              <div key={course._id} className="course-card">
+                <h3>{course.courseName}</h3>
+                <p>{course.courseDescription}</p>
+                <div className="course-details">
+                  <span className="price">${course.coursePrice}</span>
+                  <span className="students">{course.studentsEnrolled?.length || 0} students enrolled</span>
+                </div>
+                <button 
+                  onClick={() => handleViewCourse(course._id)} 
+                  className="view-course-btn"
+                >
+                  View Course
+                </button>
+              </div>
+            ))
+          ) : (
+            <p>No courses available at the moment.</p>
+          )}
         </div>
       </section>
     </div>
