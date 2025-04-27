@@ -1,423 +1,857 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Loader, LogOut, User, Calendar, Users, AlertCircle } from 'lucide-react';
-
-// Create an axios instance with interceptors for token handling
-const api = axios.create();
-
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    
-    // If error is 401 and we haven't tried to refresh yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      try {
-        // Try to refresh the token
-        const refreshToken = localStorage.getItem('refreshToken');
-        const response = await axios.post('/tutor/refresh-token', { refreshToken });
-        
-        // Store new tokens
-        localStorage.setItem('accessToken', response.data.data.accessToken);
-        localStorage.setItem('refreshToken', response.data.data.refreshToken);
-        
-        // Update the authorization header and retry
-        originalRequest.headers['Authorization'] = `Bearer ${response.data.data.accessToken}`;
-        return api(originalRequest);
-      } catch (error) {
-        // If refresh fails, redirect to login
-        return Promise.reject(error);
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-
-// TabButton component for consistent tab styling
-const TabButton = ({ active, onClick, children, icon }) => (
-  <button
-    onClick={onClick}
-    className={`
-      flex items-center space-x-2 whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm
-      transition-colors duration-200 ease-in-out
-      ${active 
-        ? 'border-blue-500 text-blue-600' 
-        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
-    `}
-  >
-    {icon}
-    <span>{children}</span>
-  </button>
-);
-
-// Alert component for showing error messages
-const Alert = ({ message, type = "error" }) => (
-  <div className={`p-4 mb-4 rounded-md ${type === "error" ? "bg-red-50" : "bg-yellow-50"}`}>
-    <div className="flex">
-      <div className="flex-shrink-0">
-        <AlertCircle className={`h-5 w-5 ${type === "error" ? "text-red-400" : "text-yellow-400"}`} />
-      </div>
-      <div className="ml-3">
-        <p className={`text-sm ${type === "error" ? "text-red-700" : "text-yellow-700"}`}>
-          {message}
-        </p>
-      </div>
-    </div>
-  </div>
-);
-
-// Card component for consistent styling
-const Card = ({ title, description, children, footer }) => (
-  <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-    <div className="px-4 py-5 sm:px-6">
-      <h3 className="text-lg leading-6 font-medium text-gray-900">{title}</h3>
-      {description && <p className="mt-1 max-w-2xl text-sm text-gray-500">{description}</p>}
-    </div>
-    <div className="border-t border-gray-200">
-      {children}
-    </div>
-    {footer && (
-      <div className="px-4 py-3 bg-gray-50 text-right sm:px-6">
-        {footer}
-      </div>
-    )}
-  </div>
-);
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  User,
+  Mail,
+  Hash,
+  Calendar,
+  Book,
+  LogOut,
+  Home,
+  Users,
+  BookOpen,
+  Settings,
+  MessageSquare,
+  BarChart,
+  Menu,
+  X,
+  Plus,
+  Edit,
+  Trash,
+  DollarSign,
+  Tag,
+} from "lucide-react";
+import tutorService from "../../backend/tutor.config";
+import courseService from "../../backend/course.config";
 
 const TutorDashboard = () => {
+  const navigate = useNavigate();
   const [tutor, setTutor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [sessions, setSessions] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [activeTab, setActiveTab] = useState('profile');
-  const navigate = useNavigate();
+  const [activeSection, setActiveSection] = useState('profile');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [courses, setCourses] = useState([]);
+  const [isAddingCourse, setIsAddingCourse] = useState(false);
+  const [newCourse, setNewCourse] = useState({
+    courseName: '',
+    courseDescription: '',
+    coursePrice: '',
+    tags: '',
+  });
 
-  // Fetch tutor data with error handling
+  // Fetch current tutor data
   const fetchTutorData = useCallback(async () => {
     try {
-      setError(null);
-      const response = await api.get('/tutor/current-tutor', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      setTutor(response.data.data);
-    } catch (error) {
-      console.error('Error fetching tutor data:', error);
-      setError('Failed to load profile data. Please try again.');
+      setLoading(true);
+      const tutorData = await tutorService.getCurrentTutor();
+      console.log("Tutor data response:", tutorData);
       
-      // If token refresh failed and we got 401, redirect to login
-      if (error.response?.status === 401) {
-        handleLogout();
+      if (tutorData) {
+        setTutor(tutorData);
+      } else {
+        setError("No tutor data received");
       }
+    } catch (error) {
+      console.error("Error fetching tutor:", error);
+      setError(error.message || "Failed to fetch tutor data");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Fetch sessions with error handling
-  const fetchSessions = useCallback(async () => {
+  // Fetch tutor's courses
+  const fetchCourses = useCallback(async () => {
     try {
-      setError(null);
-      const response = await api.get('/tutor/sessions', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      setSessions(response.data.data || []);
+      if (tutor?.coursesTaught?.length > 0) {
+        // Fetch full course details for each course ID
+        const coursePromises = tutor.coursesTaught.map(courseId => 
+          courseService.getCourse(courseId)
+        );
+        const coursesData = await Promise.all(coursePromises);
+        setCourses(coursesData.filter(course => course)); // Filter out any null/undefined results
+      } else {
+        setCourses([]);
+      }
     } catch (error) {
-      console.error('Error fetching sessions:', error);
-      setError('Failed to load session data. Please try again.');
+      console.error("Error fetching courses:", error);
+      setError("Failed to fetch courses");
     }
-  }, []);
+  }, [tutor]);
 
-  // Fetch students with error handling
-  const fetchStudents = useCallback(async () => {
-    try {
-      setError(null);
-      const response = await api.get('/tutor/students', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      setStudents(response.data.data || []);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-      setError('Failed to load student data. Please try again.');
-    }
-  }, []);
-
-  // Handle logout with error handling
-  const handleLogout = useCallback(async () => {
-    try {
-      await api.post('/tutor/logout', {}, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      // Clear all local storage items
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userType');
-      localStorage.removeItem('user');
-      navigate('/login');
-    }
-  }, [navigate]);
-
-  // Handle tab changes with data fetching as needed
-  const handleTabChange = useCallback((tab) => {
-    setActiveTab(tab);
-    
-    if (tab === 'sessions' && sessions.length === 0) {
-      fetchSessions();
-    } else if (tab === 'students' && students.length === 0) {
-      fetchStudents();
-    }
-  }, [fetchSessions, fetchStudents, sessions.length, students.length]);
-
-  // Initial data fetching
   useEffect(() => {
     fetchTutorData();
   }, [fetchTutorData]);
 
-  // Secondary data fetching after tutor is loaded
   useEffect(() => {
-    if (tutor) {
-      if (activeTab === 'sessions') {
-        fetchSessions();
-      } else if (activeTab === 'students') {
-        fetchStudents();
+    if (tutor && activeSection === 'courses') {
+      fetchCourses();
+    }
+  }, [tutor, activeSection, fetchCourses]);
+
+  // Handle course creation
+  const handleCreateCourse = async (e) => {
+    e.preventDefault();
+    try {
+      const courseData = {
+        ...newCourse,
+        coursePrice: parseFloat(newCourse.coursePrice),
+        tags: newCourse.tags.split(',').map(tag => tag.trim()),
+        tutors: [tutor._id],
+      };
+
+      const createdCourse = await courseService.createCourse(courseData);
+      
+      // Update the tutor's coursesTaught array
+      const updatedTutor = {
+        ...tutor,
+        coursesTaught: [...tutor.coursesTaught, createdCourse._id]
+      };
+      await tutorService.updateTutor(tutor._id, updatedTutor);
+      
+      setIsAddingCourse(false);
+      setNewCourse({
+        courseName: '',
+        courseDescription: '',
+        coursePrice: '',
+        tags: '',
+      });
+      
+      // Refresh both tutor data and courses
+      await fetchTutorData();
+      await fetchCourses();
+    } catch (error) {
+      console.error("Error creating course:", error);
+      setError("Failed to create course");
+    }
+  };
+
+  // Handle course deletion
+  const handleDeleteCourse = async (courseId) => {
+    if (window.confirm('Are you sure you want to delete this course?')) {
+      try {
+        await courseService.deleteCourse(courseId);
+        
+        // Update the tutor's coursesTaught array
+        const updatedTutor = {
+          ...tutor,
+          coursesTaught: tutor.coursesTaught.filter(id => id !== courseId)
+        };
+        await tutorService.updateTutor(tutor._id, updatedTutor);
+        
+        // Refresh both tutor data and courses
+        await fetchTutorData();
+        await fetchCourses();
+      } catch (error) {
+        console.error("Error deleting course:", error);
+        setError("Failed to delete course");
       }
     }
-  }, [tutor, activeTab, fetchSessions, fetchStudents]);
+  };
 
-  // Loading state
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (window.innerWidth <= 768 && isSidebarOpen) {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && !sidebar.contains(event.target)) {
+          setIsSidebarOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSidebarOpen]);
+
+  // Enhanced styles for a more professional look
+  const styles = {
+    container: {
+      display: "flex",
+      minHeight: "100vh",
+      backgroundColor: "#f8fafc",
+      position: "relative",
+    },
+    sidebar: {
+      width: "250px",
+      backgroundColor: "#ffffff",
+      borderRight: "1px solid #e2e8f0",
+      padding: "1.5rem",
+      display: "flex",
+      flexDirection: "column",
+      position: "fixed",
+      height: "100vh",
+      zIndex: 1000,
+      transition: "transform 0.3s ease-in-out",
+      "@media (max-width: 768px)": {
+        transform: isSidebarOpen ? "translateX(0)" : "translateX(-100%)",
+      },
+    },
+    mainContent: {
+      flex: 1,
+      padding: "2rem",
+      maxWidth: "1400px",
+      margin: "0 auto",
+      marginLeft: "250px",
+      "@media (max-width: 768px)": {
+        marginLeft: 0,
+        padding: "1rem",
+      },
+    },
+    mobileHeader: {
+      display: "none",
+      "@media (max-width: 768px)": {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "1rem",
+        backgroundColor: "#ffffff",
+        borderBottom: "1px solid #e2e8f0",
+        position: "sticky",
+        top: 0,
+        zIndex: 900,
+      },
+    },
+    menuButton: {
+      display: "none",
+      "@media (max-width: 768px)": {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0.5rem",
+        backgroundColor: "transparent",
+        border: "none",
+        cursor: "pointer",
+        color: "#64748b",
+        "&:hover": {
+          color: "#0f172a",
+        },
+      },
+    },
+    navItem: {
+      display: "flex",
+      alignItems: "center",
+      padding: "0.75rem 1rem",
+      marginBottom: "0.5rem",
+      borderRadius: "0.5rem",
+      cursor: "pointer",
+      transition: "all 0.2s",
+      color: "#64748b",
+      textDecoration: "none",
+      "&:hover": {
+        backgroundColor: "#f1f5f9",
+        color: "#0f172a",
+      },
+    },
+    activeNavItem: {
+      backgroundColor: "#dbeafe",
+      color: "#3b82f6",
+      fontWeight: "500",
+    },
+    navIcon: {
+      marginRight: "0.75rem",
+      width: "20px",
+      height: "20px",
+    },
+    header: {
+      display: "flex",
+      alignItems: "center",
+      marginBottom: "2rem",
+      padding: "1.5rem",
+      backgroundColor: "#ffffff",
+      borderRadius: "1rem",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+      "@media (max-width: 768px)": {
+        marginBottom: "1rem",
+        padding: "1rem",
+      },
+    },
+    avatar: {
+      width: "80px",
+      height: "80px",
+      borderRadius: "50%",
+      marginRight: "1.5rem",
+      border: "3px solid #e2e8f0",
+      objectFit: "cover",
+      "@media (max-width: 768px)": {
+        width: "60px",
+        height: "60px",
+        marginRight: "1rem",
+      },
+    },
+    greeting: {
+      fontSize: "2rem",
+      color: "#0f172a",
+      fontWeight: "600",
+      margin: 0,
+      "@media (max-width: 768px)": {
+        fontSize: "1.5rem",
+      },
+    },
+    studentInfo: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+      gap: "1.5rem",
+      marginBottom: "2.5rem",
+      backgroundColor: "#ffffff",
+      borderRadius: "1rem",
+      padding: "1.5rem",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+      "@media (max-width: 768px)": {
+        gridTemplateColumns: "1fr",
+        gap: "1rem",
+        padding: "1rem",
+      },
+    },
+    infoCard: {
+      display: "flex",
+      alignItems: "center",
+      padding: "1rem",
+      backgroundColor: "#f8fafc",
+      borderRadius: "0.75rem",
+      gap: "1rem",
+    },
+    infoIcon: {
+      color: "#3b82f6",
+      backgroundColor: "#dbeafe",
+      padding: "0.75rem",
+      borderRadius: "0.5rem",
+    },
+    infoContent: {
+      display: "flex",
+      flexDirection: "column",
+    },
+    infoLabel: {
+      fontSize: "0.875rem",
+      color: "#64748b",
+      marginBottom: "0.25rem",
+    },
+    infoValue: {
+      fontSize: "1rem",
+      color: "#0f172a",
+      fontWeight: "500",
+    },
+    sectionTitle: {
+      fontSize: "1.5rem",
+      margin: "2rem 0 1.5rem",
+      color: "#0f172a",
+      fontWeight: "600",
+      display: "flex",
+      alignItems: "center",
+      gap: "0.5rem",
+      "@media (max-width: 768px)": {
+        fontSize: "1.25rem",
+        margin: "1.5rem 0 1rem",
+      },
+    },
+    logoutButton: {
+      backgroundColor: "#ef4444",
+      color: "#ffffff",
+      border: "none",
+      padding: "0.75rem 1.5rem",
+      borderRadius: "0.5rem",
+      cursor: "pointer",
+      fontWeight: "500",
+      transition: "background-color 0.2s",
+      display: "flex",
+      alignItems: "center",
+      gap: "0.5rem",
+      marginTop: "auto",
+      "&:hover": {
+        backgroundColor: "#dc2626",
+      },
+    },
+    overlay: {
+      display: "none",
+      "@media (max-width: 768px)": {
+        display: isSidebarOpen ? "block" : "none",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        zIndex: 999,
+      },
+    },
+  };
+
+  const navItems = [
+    { id: 'profile', label: 'Profile', icon: <User size={20} /> },
+    { id: 'dashboard', label: 'Dashboard', icon: <Home size={20} /> },
+    { id: 'students', label: 'My Students', icon: <Users size={20} /> },
+    { id: 'courses', label: 'My Courses', icon: <BookOpen size={20} /> },
+    { id: 'sessions', label: 'Sessions', icon: <Calendar size={20} /> },
+    { id: 'messages', label: 'Messages', icon: <MessageSquare size={20} /> },
+    { id: 'analytics', label: 'Analytics', icon: <BarChart size={20} /> },
+    { id: 'settings', label: 'Settings', icon: <Settings size={20} /> },
+  ];
+
+  // Add new styles for courses section
+  const courseStyles = {
+    courseGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+      gap: "1.5rem",
+      marginTop: "1.5rem",
+    },
+    courseCard: {
+      backgroundColor: "#ffffff",
+      borderRadius: "1rem",
+      padding: "1.5rem",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+      transition: "transform 0.2s, box-shadow 0.2s",
+      "&:hover": {
+        transform: "translateY(-2px)",
+        boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+      },
+    },
+    courseHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: "1rem",
+    },
+    courseTitle: {
+      fontSize: "1.25rem",
+      fontWeight: "600",
+      color: "#0f172a",
+      margin: 0,
+    },
+    coursePrice: {
+      display: "flex",
+      alignItems: "center",
+      gap: "0.5rem",
+      color: "#059669",
+      fontWeight: "500",
+    },
+    courseDescription: {
+      color: "#64748b",
+      marginBottom: "1rem",
+      lineHeight: "1.5",
+    },
+    courseTags: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "0.5rem",
+      marginBottom: "1rem",
+    },
+    tag: {
+      backgroundColor: "#e2e8f0",
+      color: "#475569",
+      padding: "0.25rem 0.75rem",
+      borderRadius: "9999px",
+      fontSize: "0.875rem",
+    },
+    courseActions: {
+      display: "flex",
+      gap: "0.5rem",
+      marginTop: "1rem",
+    },
+    actionButton: {
+      padding: "0.5rem",
+      borderRadius: "0.5rem",
+      border: "none",
+      cursor: "pointer",
+      transition: "background-color 0.2s",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    editButton: {
+      backgroundColor: "#dbeafe",
+      color: "#3b82f6",
+      "&:hover": {
+        backgroundColor: "#bfdbfe",
+      },
+    },
+    deleteButton: {
+      backgroundColor: "#fee2e2",
+      color: "#ef4444",
+      "&:hover": {
+        backgroundColor: "#fecaca",
+      },
+    },
+    addCourseButton: {
+      backgroundColor: "#3b82f6",
+      color: "#ffffff",
+      padding: "0.75rem 1.5rem",
+      borderRadius: "0.5rem",
+      border: "none",
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: "0.5rem",
+      marginBottom: "1.5rem",
+      "&:hover": {
+        backgroundColor: "#2563eb",
+      },
+    },
+    courseForm: {
+      backgroundColor: "#ffffff",
+      borderRadius: "1rem",
+      padding: "1.5rem",
+      marginBottom: "1.5rem",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    },
+    formGroup: {
+      marginBottom: "1rem",
+    },
+    formLabel: {
+      display: "block",
+      marginBottom: "0.5rem",
+      color: "#475569",
+      fontWeight: "500",
+    },
+    formInput: {
+      width: "100%",
+      padding: "0.75rem",
+      borderRadius: "0.5rem",
+      border: "1px solid #e2e8f0",
+      "&:focus": {
+        outline: "none",
+        borderColor: "#3b82f6",
+        boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)",
+      },
+    },
+    formTextarea: {
+      width: "100%",
+      padding: "0.75rem",
+      borderRadius: "0.5rem",
+      border: "1px solid #e2e8f0",
+      minHeight: "100px",
+      resize: "vertical",
+      "&:focus": {
+        outline: "none",
+        borderColor: "#3b82f6",
+        boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)",
+      },
+    },
+    formActions: {
+      display: "flex",
+      gap: "1rem",
+      marginTop: "1.5rem",
+    },
+    submitButton: {
+      backgroundColor: "#3b82f6",
+      color: "#ffffff",
+      padding: "0.75rem 1.5rem",
+      borderRadius: "0.5rem",
+      border: "none",
+      cursor: "pointer",
+      "&:hover": {
+        backgroundColor: "#2563eb",
+      },
+    },
+    cancelButton: {
+      backgroundColor: "#e2e8f0",
+      color: "#475569",
+      padding: "0.75rem 1.5rem",
+      borderRadius: "0.5rem",
+      border: "none",
+      cursor: "pointer",
+      "&:hover": {
+        backgroundColor: "#cbd5e1",
+      },
+    },
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="mx-auto h-10 w-10 text-blue-600 animate-spin" />
-          <h2 className="mt-4 text-xl font-semibold text-gray-900">Loading your dashboard</h2>
-          <p className="mt-2 text-sm text-gray-500">This will only take a moment</p>
+      <div style={styles.container}>
+        <div style={{ textAlign: "center", padding: "2rem", width: "100%" }}>
+          Loading tutor data...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <div style={{ textAlign: "center", padding: "2rem", color: "red", width: "100%" }}>
+          Error: {error}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Tutor Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="inline-flex items-center bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2 rounded-md transition-colors duration-200"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </button>
+    <div style={styles.container}>
+      {/* Mobile Header */}
+      <div style={styles.mobileHeader}>
+        <button
+          style={styles.menuButton}
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        >
+          {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+        <h1 style={{ fontSize: "1.25rem", fontWeight: "600", color: "#0f172a" }}>
+          Tutor Portal
+        </h1>
+      </div>
+
+      {/* Overlay for mobile */}
+      <div style={styles.overlay} onClick={() => setIsSidebarOpen(false)} />
+
+      {/* Sidebar Navigation */}
+      <div id="sidebar" style={styles.sidebar}>
+        <div style={{ marginBottom: "2rem" }}>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: "600", color: "#0f172a" }}>
+            Tutor Portal
+          </h2>
         </div>
-      </header>
-      
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {error && <Alert message={error} />}
         
-        {/* Navigation Tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
-            <TabButton 
-              active={activeTab === 'profile'} 
-              onClick={() => handleTabChange('profile')}
-              icon={<User className="h-4 w-4" />}
-            >
-              Profile
-            </TabButton>
-            <TabButton 
-              active={activeTab === 'sessions'} 
-              onClick={() => handleTabChange('sessions')}
-              icon={<Calendar className="h-4 w-4" />}
-            >
-              Upcoming Sessions
-            </TabButton>
-            <TabButton 
-              active={activeTab === 'students'} 
-              onClick={() => handleTabChange('students')}
-              icon={<Users className="h-4 w-4" />}
-            >
-              My Students
-            </TabButton>
-          </nav>
+        {navItems.map((item) => (
+          <div
+            key={item.id}
+            style={{
+              ...styles.navItem,
+              ...(activeSection === item.id ? styles.activeNavItem : {}),
+            }}
+            onClick={() => {
+              setActiveSection(item.id);
+              if (window.innerWidth <= 768) {
+                setIsSidebarOpen(false);
+              }
+            }}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </div>
+        ))}
+
+        <button
+          style={styles.logoutButton}
+          onClick={() => {
+            tutorService.logout();
+            navigate("/login");
+          }}
+        >
+          <LogOut size={20} />
+          Logout
+        </button>
+      </div>
+
+      {/* Main Content */}
+      <div style={styles.mainContent}>
+        {/* Header and Tutor Info */}
+        <div style={styles.header}>
+          {tutor?.avatar && (
+            <img
+              src={tutor.avatar}
+              alt={tutor.tutorName || "Tutor"}
+              style={styles.avatar}
+            />
+          )}
+          <h1 style={styles.greeting}>
+            Welcome back, {tutor?.tutorName || "Tutor"}!
+          </h1>
         </div>
 
-        {/* Profile Tab */}
-        {activeTab === 'profile' && tutor && (
-          <Card 
-            title="Tutor Profile" 
-            description="Personal details and course information"
-            footer={
-              <button
-                type="button"
-                onClick={() => navigate('/edit-profile')}
-                className="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-              >
-                Edit Profile
-              </button>
-            }
-          >
-            <dl>
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Full name</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{tutor.tutorName}</dd>
+        {tutor && (
+          <div style={styles.studentInfo}>
+            <div style={styles.infoCard}>
+              <div style={styles.infoIcon}>
+                <Mail size={20} />
               </div>
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Tutor ID</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{tutor.tutorID}</dd>
+              <div style={styles.infoContent}>
+                <span style={styles.infoLabel}>Email</span>
+                <span style={styles.infoValue}>{tutor.email || "Not provided"}</span>
               </div>
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Email address</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{tutor.email}</dd>
+            </div>
+            <div style={styles.infoCard}>
+              <div style={styles.infoIcon}>
+                <Hash size={20} />
               </div>
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Phone number</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{tutor.phone || 'Not provided'}</dd>
+              <div style={styles.infoContent}>
+                <span style={styles.infoLabel}>Tutor ID</span>
+                <span style={styles.infoValue}>{tutor.tutorID || "Not provided"}</span>
               </div>
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Subjects</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {tutor.subjects?.length ? tutor.subjects.join(', ') : 'No subjects assigned'}
-                </dd>
+            </div>
+            <div style={styles.infoCard}>
+              <div style={styles.infoIcon}>
+                <Book size={20} />
               </div>
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Experience</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{tutor.experience || 'Not provided'}</dd>
+              <div style={styles.infoContent}>
+                <span style={styles.infoLabel}>Courses Taught</span>
+                <span style={styles.infoValue}>
+                  {tutor.coursesTaught?.length > 0 
+                    ? `${tutor.coursesTaught.length} courses` 
+                    : "No courses assigned"}
+                </span>
               </div>
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">About</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{tutor.bio || 'No bio provided'}</dd>
+            </div>
+            <div style={styles.infoCard}>
+              <div style={styles.infoIcon}>
+                <Calendar size={20} />
               </div>
-            </dl>
-          </Card>
+              <div style={styles.infoContent}>
+                <span style={styles.infoLabel}>Member Since</span>
+                <span style={styles.infoValue}>
+                  {tutor.createdAt 
+                    ? new Date(tutor.createdAt).toLocaleDateString()
+                    : "Not available"}
+                </span>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* Sessions Tab */}
-        {activeTab === 'sessions' && (
-          <Card 
-            title="Upcoming Sessions" 
-            description="Your scheduled tutoring sessions"
-            footer={
+        {/* Description Section */}
+        <h2 style={styles.sectionTitle}>
+          <User size={24} />
+          About Me
+        </h2>
+        <div style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "1rem",
+          padding: "1.5rem",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+        }}>
+          <p style={{
+            fontSize: "1rem",
+            color: "#1e293b",
+            lineHeight: "1.6",
+          }}>
+            {tutor?.description || "No description provided"}
+          </p>
+        </div>
+
+        {activeSection === 'courses' && (
+          <>
+            <h2 style={styles.sectionTitle}>
+              <BookOpen size={24} />
+              My Courses
+            </h2>
+
+            {!isAddingCourse ? (
               <button
-                type="button"
-                onClick={() => navigate('/schedule-session')}
-                className="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+                style={courseStyles.addCourseButton}
+                onClick={() => setIsAddingCourse(true)}
               >
-                Schedule New Session
+                <Plus size={20} />
+                Add New Course
               </button>
-            }
-          >
-            {sessions.length > 0 ? (
-              <ul className="divide-y divide-gray-200">
-                {sessions.map((session) => (
-                  <li key={session.id} className="px-4 py-4 sm:px-6 hover:bg-blue-50 transition-colors duration-150">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <p className="text-sm font-medium text-gray-900">Student: {session.studentName}</p>
-                        <p className="text-sm text-gray-500">Subject: {session.subject}</p>
-                        <div className="flex items-center mt-1">
-                          <Calendar className="h-4 w-4 text-gray-400 mr-1" />
-                          <p className="text-sm text-gray-500">
-                            {new Date(session.sessionDate).toLocaleDateString('en-US', { 
-                              weekday: 'long', 
-                              month: 'short', 
-                              day: 'numeric' 
-                            })}
-                          </p>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Time: {session.startTime} - {session.endTime}
-                        </p>
+            ) : (
+              <div style={courseStyles.courseForm}>
+                <h3 style={{ marginBottom: "1.5rem", fontSize: "1.25rem", fontWeight: "600" }}>
+                  Create New Course
+                </h3>
+                <form onSubmit={handleCreateCourse}>
+                  <div style={courseStyles.formGroup}>
+                    <label style={courseStyles.formLabel}>Course Name</label>
+                    <input
+                      type="text"
+                      style={courseStyles.formInput}
+                      value={newCourse.courseName}
+                      onChange={(e) => setNewCourse({ ...newCourse, courseName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div style={courseStyles.formGroup}>
+                    <label style={courseStyles.formLabel}>Description</label>
+                    <textarea
+                      style={courseStyles.formTextarea}
+                      value={newCourse.courseDescription}
+                      onChange={(e) => setNewCourse({ ...newCourse, courseDescription: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div style={courseStyles.formGroup}>
+                    <label style={courseStyles.formLabel}>Price ($)</label>
+                    <input
+                      type="number"
+                      style={courseStyles.formInput}
+                      value={newCourse.coursePrice}
+                      onChange={(e) => setNewCourse({ ...newCourse, coursePrice: e.target.value })}
+                      required
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div style={courseStyles.formGroup}>
+                    <label style={courseStyles.formLabel}>Tags (comma-separated)</label>
+                    <input
+                      type="text"
+                      style={courseStyles.formInput}
+                      value={newCourse.tags}
+                      onChange={(e) => setNewCourse({ ...newCourse, tags: e.target.value })}
+                      placeholder="e.g., math, algebra, calculus"
+                    />
+                  </div>
+                  <div style={courseStyles.formActions}>
+                    <button type="submit" style={courseStyles.submitButton}>
+                      Create Course
+                    </button>
+                    <button
+                      type="button"
+                      style={courseStyles.cancelButton}
+                      onClick={() => setIsAddingCourse(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {courses.length > 0 ? (
+              <div style={courseStyles.courseGrid}>
+                {courses.map((course) => (
+                  <div key={course._id} style={courseStyles.courseCard}>
+                    <div style={courseStyles.courseHeader}>
+                      <h3 style={courseStyles.courseTitle}>{course.courseName}</h3>
+                      <div style={courseStyles.coursePrice}>
+                        <DollarSign size={16} />
+                        {course.coursePrice}
                       </div>
+                    </div>
+                    <p style={courseStyles.courseDescription}>{course.courseDescription}</p>
+                    <div style={courseStyles.courseTags}>
+                      {course.tags?.map((tag, index) => (
+                        <span key={index} style={courseStyles.tag}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    <div style={courseStyles.courseActions}>
                       <button
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200"
-                        onClick={() => navigate(`/session/${session.id}`)}
+                        style={{ ...courseStyles.actionButton, ...courseStyles.editButton }}
+                        onClick={() => navigate(`/edit-course/${course._id}`)}
                       >
-                        View Details
+                        <Edit size={16} />
+                      </button>
+                      <button
+                        style={{ ...courseStyles.actionButton, ...courseStyles.deleteButton }}
+                        onClick={() => handleDeleteCourse(course._id)}
+                      >
+                        <Trash size={16} />
                       </button>
                     </div>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             ) : (
-              <div className="px-4 py-8 text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
-                  <Calendar className="h-6 w-6 text-blue-600" />
-                </div>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No sessions</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  You don't have any upcoming tutoring sessions scheduled.
+              <div style={{
+                textAlign: "center",
+                padding: "3rem",
+                backgroundColor: "#ffffff",
+                borderRadius: "1rem",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              }}>
+                <BookOpen size={48} style={{ color: "#94a3b8", marginBottom: "1rem" }} />
+                <h3 style={{ fontSize: "1.25rem", fontWeight: "600", color: "#0f172a", marginBottom: "0.5rem" }}>
+                  No Courses Yet
+                </h3>
+                <p style={{ color: "#64748b" }}>
+                  Start by creating your first course using the "Add New Course" button above.
                 </p>
               </div>
             )}
-          </Card>
+          </>
         )}
-
-        {/* Students Tab */}
-        {activeTab === 'students' && (
-          <Card 
-            title="My Students" 
-            description="Students assigned to you for tutoring"
-          >
-            {students.length > 0 ? (
-              <ul className="divide-y divide-gray-200">
-                {students.map((student) => (
-                  <li key={student.id} className="px-4 py-4 sm:px-6 hover:bg-blue-50 transition-colors duration-150">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                        <p className="text-sm text-gray-500">Student ID: {student.studentID}</p>
-                        <p className="text-sm text-gray-500">Email: {student.email}</p>
-                        <p className="text-sm text-gray-500">
-                          Subjects: {student.subjects?.length ? student.subjects.join(', ') : 'None'}
-                        </p>
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
-                        <button
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200"
-                          onClick={() => navigate(`/student/${student.id}`)}
-                        >
-                          View Profile
-                        </button>
-                        <button
-                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200"
-                          onClick={() => navigate(`/schedule-session/${student.id}`)}
-                        >
-                          Schedule Session
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="px-4 py-8 text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
-                  <Users className="h-6 w-6 text-blue-600" />
-                </div>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No students assigned</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  You don't have any students assigned to you yet.
-                </p>
-              </div>
-            )}
-          </Card>
-        )}
-      </main>
+      </div>
     </div>
   );
 };

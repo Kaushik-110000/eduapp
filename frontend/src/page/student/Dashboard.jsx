@@ -14,7 +14,7 @@ import {
   Tag,
 } from "lucide-react";
 import courseservice from "../../backend/courses.config";
-import authservice from "../../backend/auth.config";
+import studentService from "../../backend/student.config";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -27,13 +27,10 @@ const StudentDashboard = () => {
   const fetchStudentData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await authservice.getCurrentStudent();
-      console.log("Student data response:", res);
+      const studentData = await studentService.getCurrentStudent();
+      console.log("Student data response:", studentData);
       
-      if (res) {
-        // Check if res is the student data directly or if it's nested in a status property
-        const studentData = res.status ? res.data : res;
-        console.log("Processed student data:", studentData);
+      if (studentData) {
         setStudent(studentData);
       } else {
         setError("No student data received");
