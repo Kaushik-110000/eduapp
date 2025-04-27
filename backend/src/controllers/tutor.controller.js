@@ -198,29 +198,29 @@ const getTutor = asyncHandler(async (req, res) => {
 });
 
 const createCourse = asyncHandler(async (req, res) => {
-  const { tutor } = req;
+  const tutor = req.tutor;
+  console.log("tit", tutor);
   if (!tutor) throw new ApiError(404, "Tutor not found");
   const {
     courseName,
-    tutors = [],
     coursePrice,
     courseDescription,
     studentsEnrolled = [],
     tags = [],
   } = req.body;
+
   console.log("A", tutor);
   const course = await new Course({
     courseName,
-    tutors,
     coursePrice,
     courseDescription,
     studentsEnrolled,
     tags,
   });
-
+  course.tutors.push(tutor._id);
   await course.save();
   tutor.coursesTaught.push(course._id);
-
+  await tutor.save();
   return res
     .status(200)
     .json(new ApiResponse(200, course, "New course created"));
