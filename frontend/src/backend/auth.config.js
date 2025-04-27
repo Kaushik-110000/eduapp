@@ -7,7 +7,7 @@ export class Authservice {
     try {
       const response = await axios.get(
         `${server.serverUrl}/student/current-student`
-      );
+      );  //hello
       if (response.status == 200) {
         const {
           _id,
