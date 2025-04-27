@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+axios.defaults.withCredentials = true;
 
 const Register = () => {
   const navigate = useNavigate();
@@ -42,6 +44,7 @@ const Register = () => {
   };
 
   const handleAvatarChange = (e) => {
+    
     const file = e.target.files[0];
     if (file) {
       setAvatar(file);
@@ -95,7 +98,7 @@ const Register = () => {
       form.append('password', formData.password);
       form.append('avatar', avatar);
 
-      const endpoint = `/${userType}/register`;
+      const endpoint = `${API_BASE_URL}/${userType}/register`;
       const response = await axios.post(endpoint, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
