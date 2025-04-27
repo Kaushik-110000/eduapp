@@ -219,6 +219,8 @@ const createCourse = asyncHandler(async (req, res) => {
   });
 
   await course.save();
+  tutor.coursesTaught.push(course._id);
+
   return res
     .status(200)
     .json(new ApiResponse(200, course, "New course created"));
