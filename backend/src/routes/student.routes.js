@@ -9,9 +9,9 @@ import {
   getStudent,
   generatePaymentOrder,
   enrollCourse,
-  createComment,
 } from "../controllers/student.controller.js";
 
+import { createComment } from "../controllers/comment.controller.js";
 const router = Router();
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyStudent } from "../middlewares/auth.middleware.js";
