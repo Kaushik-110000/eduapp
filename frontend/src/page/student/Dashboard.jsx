@@ -36,12 +36,13 @@ const StudentDashboard = () => {
   // Fetch current student data
   const fetchStudentData = useCallback(async () => {
     try {
-      const res = await authservice.getCurrentStudent();
-      console.log("res");
-      console.log(res);
-      if (res && res.status) {
-        setStudent(res);
-      }
+      await authservice.getCurrentStudent().then((res) => {
+        console.log("res");
+        console.log(res);
+        if (res && res.status) {
+          setStudent(res);
+        }
+      });
     } catch (error) {
       console.error("Error fetching student:", error);
     }
